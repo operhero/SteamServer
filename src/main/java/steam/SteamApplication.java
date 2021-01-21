@@ -1,9 +1,10 @@
 package steam;
 
 import com.alibaba.fastjson.JSONArray;
-import org.apache.ibatis.session.SqlSession;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.stereotype.Controller;
@@ -28,30 +29,50 @@ public class SteamApplication {
 	@Autowired
 	private CDKeyMapper cdKeyMapper;
 
+	private static String serverKey;
+	@Value("${serverKey}")
+	public void setServerKey(String key){
+		serverKey = key;
+	}
+
 	public static void main(String[] args) {
 		SpringApplication.run(SteamApplication.class, args);
 	}
 
 	@RequestMapping(value = "/login", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
-	String getServerLists(@RequestParam(value = "steamid") long steamid,
-						  @RequestParam(value = "serverKey") String serverKey, HttpServletRequest request)  {
-		String key = steamid + "_" + serverKey;
-        User user = userMapper.selectByPrimaryKey(key);
+	String login(@RequestParam(value = "steamid") long steamid,
+						  @RequestParam(value = "sign") String sign,
+						  HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+        User user = userMapper.selectByPrimaryKey(steamid + "");
 		if(user == null)
 		{
 			user = new User();
-			user.setUid(key);
 			userMapper.insert(user);
 		}
-		return key;
+		return steamid + "";
 	}
 
 	@RequestMapping(value = "/profile", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
-	String getServerLists(@RequestParam(value = "sid") String sid,
+	String profile(@RequestParam(value = "steamid") String steamid,
+						  @RequestParam(value = "sign") String sign,
 						  HttpServletRequest request) {
-        User user = userMapper.selectByPrimaryKey(sid);
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+        User user = userMapper.selectByPrimaryKey(steamid);
 		Object obj = JSONArray.toJSON(user);
 		String json = obj.toString();
 		return json;
@@ -59,11 +80,55 @@ public class SteamApplication {
 
 	@RequestMapping(value = "/battle-end", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
-	String getServerLists(@RequestParam(value = "sid") String sid,
+	String battleEnd(@RequestParam(value = "steamid") String steamid,
 						  @RequestParam(value = "data") String data,
+						  @RequestParam(value = "sign") String sign,
 						  HttpServletRequest request)  {
-		User user = userMapper.selectByPrimaryKey(sid);
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&data=").append(data).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+		User user = userMapper.selectByPrimaryKey(steamid);
 		user.setGamedata(data);
+		userMapper.updateByPrimaryKeySelective(user);
+		return "success";
+	}
+
+	@RequestMapping(value = "/depot-profile", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String depotProfile(@RequestParam(value = "steamid") String steamid,
+						  @RequestParam(value = "sign") String sign,
+						  HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+		User user = userMapper.selectByPrimaryKey(steamid);
+		Object obj = JSONArray.toJSON(user);
+		String json = obj.toString();
+		return json;
+	}
+
+	@RequestMapping(value = "/depot-update", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String depotUpdate(@RequestParam(value = "steamid") String steamid,
+					   @RequestParam(value = "depot") String depot,
+					   @RequestParam(value = "sign") String sign,
+					   HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&depot=").append(depot).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+		User user = userMapper.selectByPrimaryKey(steamid);
 		userMapper.updateByPrimaryKeySelective(user);
 		return "success";
 	}
@@ -106,7 +171,15 @@ public class SteamApplication {
 	public @ResponseBody
 	String useCDKey(@RequestParam(value = "key") String key,
 					@RequestParam(value = "steamid") String steamid,
+					@RequestParam(value = "sign") String sign,
 					HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("key=").append(key).append("&steamid=").append(steamid).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
 		Map<String, String> ret = new HashMap<String,String>();
 		CDKey cdKey = cdKeyMapper.selectByPrimaryKey(key);
 		if(cdKey == null){
