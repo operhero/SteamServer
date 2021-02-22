@@ -64,11 +64,18 @@
 			<version>1.2.51</version>
 		</dependency>
 
+		<!-- https://mvnrepository.com/artifact/commons-codec/commons-codec -->
 		<dependency>
-			<groupId>org.apache.commons</groupId>
+			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
-			<version>1.4</version>
+			<version>1.15</version>
 		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+
 	</dependencies>
 
 
@@ -88,6 +95,13 @@
 					<verbose>true</verbose>
 					<overwrite>true</overwrite>
 				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<!--修改版本-->
+				<version>3.1.0</version>
 			</plugin>
 			<!-- /. -->
 		</plugins>

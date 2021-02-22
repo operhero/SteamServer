@@ -1,20 +1,24 @@
 package steam;
 
 import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import steam.service.RedisTempleService;
 import steam.dao.CDKeyMapper;
 import steam.dao.UserMapper;
 import steam.domain.CDKey;
-import steam.domain.User;
+import steam.domain.UserWithBLOBs;
 
 import javax.servlet.http.HttpServletRequest;
 import java.security.SecureRandom;
@@ -23,6 +27,7 @@ import java.util.*;
 @Controller
 @SpringBootApplication
 @MapperScan("steam.dao")
+@ComponentScan(basePackages={"steam.service"})
 public class SteamApplication {
     @Autowired
     private UserMapper userMapper;
@@ -35,13 +40,18 @@ public class SteamApplication {
 		serverKey = key;
 	}
 
+	@Autowired
+	private RedisTempleService redisTempleService;
+
+	private String endlessRankName = "endlessRank";
+
 	public static void main(String[] args) {
 		SpringApplication.run(SteamApplication.class, args);
 	}
 
 	@RequestMapping(value = "/login", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
-	String login(@RequestParam(value = "steamid") long steamid,
+	String login(@RequestParam(value = "steamid") String steamid,
 						  @RequestParam(value = "sign") String sign,
 						  HttpServletRequest request)  {
 		StringBuffer md5buf = new StringBuffer();
@@ -51,10 +61,11 @@ public class SteamApplication {
 			return "sign error";
 		}
 
-        User user = userMapper.selectByPrimaryKey(steamid + "");
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid + "");
 		if(user == null)
 		{
-			user = new User();
+			user = new UserWithBLOBs();
+			user.setUid(steamid);
 			userMapper.insert(user);
 		}
 		return steamid + "";
@@ -72,9 +83,11 @@ public class SteamApplication {
 			return "sign error";
 		}
 
-        User user = userMapper.selectByPrimaryKey(steamid);
-		Object obj = JSONArray.toJSON(user);
-		String json = obj.toString();
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+		JSONObject object = new JSONObject();
+		object.put("uid",user.getUid());
+		object.put("gamedata",user.getGamedata());
+		String json = object.toString();
 		return json;
 	}
 
@@ -90,9 +103,26 @@ public class SteamApplication {
 		if (!sign.equalsIgnoreCase(_sign)){
 			return "sign error";
 		}
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
 
-		User user = userMapper.selectByPrimaryKey(steamid);
-		user.setGamedata(data);
+		JSONObject json = JSONObject.parseObject(user.getGamedata());
+		int s = json!=null && json.getInteger("score")!=null?json.getInteger("score").intValue():0;
+		int e = json!=null && json.getInteger("endless")!=null?json.getInteger("endless").intValue():0;
+		json = JSONObject.parseObject(data);
+		int ts = json.getIntValue("score");
+		int te = json.getIntValue("endless");
+
+		s+=ts;
+		if(te>e)
+		{
+			e = te;
+			redisTempleService.add(endlessRankName,steamid,e);
+		}
+
+		JSONObject object = new JSONObject();
+		object.put("score",s);
+		object.put("endless",e);
+		user.setGamedata(object.toString());
 		userMapper.updateByPrimaryKeySelective(user);
 		return "success";
 	}
@@ -109,9 +139,11 @@ public class SteamApplication {
 			return "sign error";
 		}
 
-		User user = userMapper.selectByPrimaryKey(steamid);
-		Object obj = JSONArray.toJSON(user);
-		String json = obj.toString();
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+		JSONObject object = new JSONObject();
+		object.put("uid",user.getUid());
+		object.put("depot",user.getDepot());
+		String json = object.toString();
 		return json;
 	}
 
@@ -128,9 +160,79 @@ public class SteamApplication {
 			return "sign error";
 		}
 
-		User user = userMapper.selectByPrimaryKey(steamid);
+		try{
+			UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+			user.setDepot(depot);
+			userMapper.updateByPrimaryKeySelective(user);
+		}
+		catch (Exception e){
+			System.out.println("depot-update error " + "steamid=" + steamid + ";depot=" + depot + ";sign="+sign);
+			System.out.println(e.getStackTrace());
+		}
+
+		return "success";
+	}
+
+	@RequestMapping(value = "/load-shop-history", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String loadShopHistory(@RequestParam(value = "steamid") String steamid,
+						@RequestParam(value = "sign") String sign,
+						HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+		JSONObject object = new JSONObject();
+		object.put("uid",user.getUid());
+		object.put("shop_data",user.getShopData());
+		String json = object.toString();
+		return json;
+	}
+
+	@RequestMapping(value = "/save-shop-history", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String saveShopHistory(@RequestParam(value = "steamid") String steamid,
+					   @RequestParam(value = "shop_data") String shop_data,
+					   @RequestParam(value = "sign") String sign,
+					   HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&shop_data=").append(shop_data).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+		user.setShopData(shop_data);
 		userMapper.updateByPrimaryKeySelective(user);
 		return "success";
+	}
+
+	@RequestMapping(value = "/endless-rank", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String getEndlessRank(@RequestParam(value = "steamid") String steamid,
+						   HttpServletRequest request)  {
+		Set<ZSetOperations.TypedTuple<String>> rank = redisTempleService.revRangeWithScore(endlessRankName,0,99);
+		Long myRank = redisTempleService.revrank(endlessRankName,steamid);
+		Double myScore = redisTempleService.score(endlessRankName,steamid);
+		StringBuilder sb = new StringBuilder(101);
+		int r = 1;
+		for (ZSetOperations.TypedTuple<String> tuple:rank) {
+			sb.append(tuple.getValue()).append(',').append(r++).append(',').append(tuple.getScore().intValue()).append(';');
+		}
+
+
+		if(myRank != null && myScore !=null){
+			sb.append(steamid).append(',').append(myRank + 1).append(',').append(myScore.intValue());
+		}else{
+			sb.append(steamid).append(",-1,-1");
+		}
+
+		return sb.toString();
 	}
 
 	@RequestMapping(value = "/gen-cdkey", produces = "text/javascript;charset=UTF-8")
