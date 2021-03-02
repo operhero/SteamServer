@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,7 +28,8 @@ import java.util.*;
 @Controller
 @SpringBootApplication
 @MapperScan("steam.dao")
-@ComponentScan(basePackages={"steam.service"})
+@EnableAspectJAutoProxy
+@ComponentScan(basePackages={"steam.service","steam.filter"})
 public class SteamApplication {
     @Autowired
     private UserMapper userMapper;
@@ -160,15 +162,10 @@ public class SteamApplication {
 			return "sign error";
 		}
 
-		try{
 			UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
 			user.setDepot(depot);
 			userMapper.updateByPrimaryKeySelective(user);
-		}
-		catch (Exception e){
-			System.out.println("depot-update error " + "steamid=" + steamid + ";depot=" + depot + ";sign="+sign);
-			System.out.println(e.getStackTrace());
-		}
+
 
 		return "success";
 	}
@@ -252,16 +249,12 @@ public class SteamApplication {
 				sb.append(chars[rd.nextInt(cnt - 1)]);
 			}
 			String key = sb.toString();
-			try {
 				CDKey cdKey = new CDKey();
 				cdKey.setCdkey(key);
 				cdKey.setProductId(productid);
 				cdKey.setState(0);
 				cdKeyMapper.insertSelective(cdKey);
 				ret.add(key);
-			} catch (Exception e){
-				System.out.println(e.toString());
-			}
 		}
 
 		Object obj = JSONArray.toJSON(ret);
