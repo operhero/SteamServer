@@ -124,8 +124,10 @@ public class SteamApplication {
 		JSONObject object = new JSONObject();
 		object.put("score",s);
 		object.put("endless",e);
-		user.setGamedata(object.toString());
-		userMapper.updateByPrimaryKeySelective(user);
+		UserWithBLOBs saveUser = new UserWithBLOBs();
+		saveUser.setUid(steamid);
+		saveUser.setGamedata(object.toString());
+		userMapper.updateByPrimaryKeySelective(saveUser);
 		return "success";
 	}
 
@@ -162,10 +164,10 @@ public class SteamApplication {
 			return "sign error";
 		}
 
-			UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
-			user.setDepot(depot);
-			userMapper.updateByPrimaryKeySelective(user);
-
+		UserWithBLOBs user = new UserWithBLOBs();
+		user.setUid(steamid);
+		user.setDepot(depot);
+		userMapper.updateByPrimaryKeySelective(user);
 
 		return "success";
 	}
@@ -203,7 +205,8 @@ public class SteamApplication {
 			return "sign error";
 		}
 
-		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+		UserWithBLOBs user = new UserWithBLOBs();
+		user.setUid(steamid);
 		user.setShopData(shop_data);
 		userMapper.updateByPrimaryKeySelective(user);
 		return "success";

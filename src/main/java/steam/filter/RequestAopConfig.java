@@ -47,7 +47,7 @@ public class RequestAopConfig {
      */
     @AfterReturning(value = "controllerMethodPointcut()", returning = "result")
     public void afterReturning(JoinPoint joinPoint, Object result) {
-        String logTemplate = "--------------- 执行成功 ---------------\n请求开始---Send Request URL: {}, Method: {}, Params: {} \n请求方法---ClassName: {}, [Method]: {}, execution time: {}ms \n请求结束---Send Response Result: {}";
+        String logTemplate = "请求开始---Send Request URL: {}, Method: {}, Params: {}   请求方法---ClassName: {}, [Method]: {}, execution time: {}ms   请求结束---Send Response Result: {}";
         log.info(logTemplate, request.getRequestURL(), request.getMethod(), getParams(joinPoint), joinPoint.getSignature().getDeclaringTypeName(), joinPoint.getSignature().getName(), (System.currentTimeMillis() - START_TIME_MILLIS.get()), result.toString());
         START_TIME_MILLIS.remove();
     }
@@ -59,7 +59,7 @@ public class RequestAopConfig {
      */
     @AfterThrowing(value = "controllerMethodPointcut()", throwing = "ex")
     public void afterThrowing(JoinPoint joinPoint, Throwable ex) {
-        String logTemplate = "--------------- 执行失败 ---------------\n异常请求开始---Send Request URL: {}, Method: {}, Params: {} \n异常请求方法---ClassName: {}, [Method]: {}, execution time: {}ms \n异常请求结束---Exception Message: {}";
+        String logTemplate = "异常请求开始---Send Request URL: {}, Method: {}, Params: {}   异常请求方法---ClassName: {}, [Method]: {}, execution time: {}ms   异常请求结束---Exception Message: {}";
         log.error(logTemplate, request.getRequestURL(), request.getMethod(), getParams(joinPoint), joinPoint.getSignature().getDeclaringTypeName(), joinPoint.getSignature().getName(), (System.currentTimeMillis() - START_TIME_MILLIS.get()), ex.getMessage());
         START_TIME_MILLIS.remove();
     }
