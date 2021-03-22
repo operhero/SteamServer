@@ -131,6 +131,46 @@ public class SteamApplication {
 		return "success";
 	}
 
+	@RequestMapping(value = "/battle-end-new", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String battleEndNew(@RequestParam(value = "steamid") String steamid,
+					 @RequestParam(value = "enddata") String data,
+					 @RequestParam(value = "depot") String depot,
+					 @RequestParam(value = "sign") String sign,
+					 HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&enddata=").append(data).append("&depot=").append(depot).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+
+		JSONObject json = JSONObject.parseObject(user.getGamedata());
+		int s = json!=null && json.getInteger("score")!=null?json.getInteger("score").intValue():0;
+		int e = json!=null && json.getInteger("endless")!=null?json.getInteger("endless").intValue():0;
+		json = JSONObject.parseObject(data);
+		int ts = json.getIntValue("score");
+		int te = json.getIntValue("endless");
+
+		s+=ts;
+		if(te>e)
+		{
+			e = te;
+			redisTempleService.add(endlessRankName,steamid,e);
+		}
+
+		JSONObject object = new JSONObject();
+		object.put("score",s);
+		object.put("endless",e);
+		UserWithBLOBs saveUser = new UserWithBLOBs();
+		saveUser.setUid(steamid);
+		saveUser.setGamedata(object.toString());
+		saveUser.setDepot(depot);
+		userMapper.updateByPrimaryKeySelective(saveUser);
+		return "success";
+	}
+
 	@RequestMapping(value = "/depot-profile", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
 	String depotProfile(@RequestParam(value = "steamid") String steamid,
