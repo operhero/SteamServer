@@ -252,6 +252,46 @@ public class SteamApplication {
 		return "success";
 	}
 
+	@RequestMapping(value = "/load-game-equip", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String loadGameEquip(@RequestParam(value = "steamid") String steamid,
+						   @RequestParam(value = "sign") String sign,
+						   HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+		JSONObject object = new JSONObject();
+		object.put("uid",user.getUid());
+		object.put("game_equip",user.getEquip());
+		String json = object.toString();
+		return json;
+	}
+
+	@RequestMapping(value = "/save-game-equip", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String saveGameEquip(@RequestParam(value = "steamid") String steamid,
+						   @RequestParam(value = "game_equip") String game_equip,
+						   @RequestParam(value = "sign") String sign,
+						   HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&game_equip=").append(game_equip).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+		UserWithBLOBs user = new UserWithBLOBs();
+		user.setUid(steamid);
+		user.setEquip(game_equip);
+		userMapper.updateByPrimaryKeySelective(user);
+		return "success";
+	}
+
 	@RequestMapping(value = "/endless-rank", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
 	String getEndlessRank(@RequestParam(value = "steamid") String steamid,
