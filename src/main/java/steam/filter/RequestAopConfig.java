@@ -86,7 +86,7 @@ public class RequestAopConfig {
                 if(sb.length()>0){
                     sb.append("&");
                 }
-                sb.append(argNames[i]).append("=").append((String) args[i]);
+                sb.append(argNames[i]).append("=").append(args[i].toString());
             }
         }catch (Exception e){
 

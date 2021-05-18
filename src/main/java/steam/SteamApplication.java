@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.mybatis.spring.annotation.MapperScan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import steam.filter.RequestAopConfig;
 import steam.service.RedisTempleService;
 import steam.dao.CDKeyMapper;
 import steam.dao.UserMapper;
@@ -36,6 +39,9 @@ public class SteamApplication {
 	@Autowired
 	private CDKeyMapper cdKeyMapper;
 
+	private static Hashtable<String,Integer> protocNo;
+	private static final Logger log= LoggerFactory.getLogger(SteamApplication.class);
+
 	private static String serverKey;
 	@Value("${serverKey}")
 	public void setServerKey(String key){
@@ -48,6 +54,7 @@ public class SteamApplication {
 	private String endlessRankName = "endlessRank";
 
 	public static void main(String[] args) {
+		protocNo = new Hashtable<String,Integer>();
 		SpringApplication.run(SteamApplication.class, args);
 	}
 
@@ -62,6 +69,13 @@ public class SteamApplication {
 		if (!sign.equalsIgnoreCase(_sign)){
 			return "sign error";
 		}
+
+		String hkey1 = "battle-end-new" + steamid;
+		String hkey2 = "depot-update" + steamid;
+		String hkey3 = "save-shop-history" + steamid;
+		protocNo.put(hkey1,0);
+		protocNo.put(hkey2,0);
+		protocNo.put(hkey3,0);
 
 		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid + "");
 		if(user == null)
@@ -137,6 +151,7 @@ public class SteamApplication {
 					 @RequestParam(value = "enddata") String data,
 					 @RequestParam(value = "depot") String depot,
 					 @RequestParam(value = "sign") String sign,
+						@RequestParam(defaultValue = "0") Integer sendindex,
 					 HttpServletRequest request)  {
 		StringBuffer md5buf = new StringBuffer();
 		md5buf.append("steamid=").append(steamid).append("&enddata=").append(data).append("&depot=").append(depot).append("&serverKey=").append(serverKey);
@@ -144,6 +159,15 @@ public class SteamApplication {
 		if (!sign.equalsIgnoreCase(_sign)){
 			return "sign error";
 		}
+		String hkey = "battle-end-new" + steamid;
+		if(sendindex > 0){
+			if(protocNo.containsKey(hkey) && protocNo.get(hkey)>sendindex){
+				log.error("send index error battle-end-new " + sendindex + "/" +protocNo.get(hkey));
+				return "success";
+			}
+			protocNo.put(hkey, sendindex);
+		}
+
 		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
 
 		JSONObject json = JSONObject.parseObject(user.getGamedata());
@@ -166,7 +190,7 @@ public class SteamApplication {
 		UserWithBLOBs saveUser = new UserWithBLOBs();
 		saveUser.setUid(steamid);
 		saveUser.setGamedata(object.toString());
-		saveUser.setDepot(depot);
+		//saveUser.setDepot(depot);
 		userMapper.updateByPrimaryKeySelective(saveUser);
 		return "success";
 	}
@@ -196,12 +220,22 @@ public class SteamApplication {
 	String depotUpdate(@RequestParam(value = "steamid") String steamid,
 					   @RequestParam(value = "depot") String depot,
 					   @RequestParam(value = "sign") String sign,
+					   @RequestParam(defaultValue = "0") Integer sendindex,
 					   HttpServletRequest request)  {
 		StringBuffer md5buf = new StringBuffer();
 		md5buf.append("steamid=").append(steamid).append("&depot=").append(depot).append("&serverKey=").append(serverKey);
 		String _sign = DigestUtils.md5Hex(md5buf.toString());
 		if (!sign.equalsIgnoreCase(_sign)){
 			return "sign error";
+		}
+
+		String hkey = "depot-update" + steamid;
+		if(sendindex > 0){
+			if(protocNo.containsKey(hkey) && protocNo.get(hkey)>sendindex){
+				log.error("send index error depot-update " + sendindex + "/" +protocNo.get(hkey));
+				return "success";
+			}
+			protocNo.put(hkey, sendindex);
 		}
 
 		UserWithBLOBs user = new UserWithBLOBs();
@@ -237,12 +271,22 @@ public class SteamApplication {
 	String saveShopHistory(@RequestParam(value = "steamid") String steamid,
 					   @RequestParam(value = "shop_data") String shop_data,
 					   @RequestParam(value = "sign") String sign,
+						   @RequestParam(defaultValue = "0") Integer sendindex,
 					   HttpServletRequest request)  {
 		StringBuffer md5buf = new StringBuffer();
 		md5buf.append("steamid=").append(steamid).append("&shop_data=").append(shop_data).append("&serverKey=").append(serverKey);
 		String _sign = DigestUtils.md5Hex(md5buf.toString());
 		if (!sign.equalsIgnoreCase(_sign)){
 			return "sign error";
+		}
+
+		String hkey = "save-shop-history" + steamid;
+		if(sendindex > 0){
+			if(protocNo.containsKey(hkey) && protocNo.get(hkey)>sendindex){
+				log.error("send index error save-shop-history " + sendindex + "/" +protocNo.get(hkey));
+				return "success";
+			}
+			protocNo.put(hkey, sendindex);
 		}
 
 		UserWithBLOBs user = new UserWithBLOBs();

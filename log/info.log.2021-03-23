@@ -1,1 +1,0 @@
-2021-03-23 00:01:20,295 <INFO> <SpringContextShutdownHook> org.springframework.scheduling.concurrent.ExecutorConfigurationSupport.shutdown(ExecutorConfigurationSupport.java:218) | Shutting down ExecutorService 'applicationTaskExecutor'
