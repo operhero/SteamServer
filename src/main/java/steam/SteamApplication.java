@@ -107,6 +107,16 @@ public class SteamApplication {
 		return json;
 	}
 
+	@RequestMapping(value = "/query_money", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String query_money(@RequestParam(value = "steamid") String steamid,
+				   HttpServletRequest request) {
+
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+		int money = user.getMoney()!=null?user.getMoney().intValue():0;
+		return money + "";
+	}
+
 	@RequestMapping(value = "/battle-end", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
 	String battleEnd(@RequestParam(value = "steamid") String steamid,
@@ -162,8 +172,8 @@ public class SteamApplication {
 		String hkey = "battle-end-new" + steamid;
 		if(sendindex > 0){
 			if(protocNo.containsKey(hkey) && protocNo.get(hkey)>sendindex){
-				log.error("send index error battle-end-new " + sendindex + "/" +protocNo.get(hkey));
-				return "success";
+				log.info("send index error battle-end-new " + sendindex + "/" +protocNo.get(hkey));
+				//return "success";
 			}
 			protocNo.put(hkey, sendindex);
 		}
@@ -232,8 +242,8 @@ public class SteamApplication {
 		String hkey = "depot-update" + steamid;
 		if(sendindex > 0){
 			if(protocNo.containsKey(hkey) && protocNo.get(hkey)>sendindex){
-				log.error("send index error depot-update " + sendindex + "/" +protocNo.get(hkey));
-				return "success";
+				log.info("send index error depot-update " + sendindex + "/" +protocNo.get(hkey));
+				//return "success";
 			}
 			protocNo.put(hkey, sendindex);
 		}
@@ -283,8 +293,8 @@ public class SteamApplication {
 		String hkey = "save-shop-history" + steamid;
 		if(sendindex > 0){
 			if(protocNo.containsKey(hkey) && protocNo.get(hkey)>sendindex){
-				log.error("send index error save-shop-history " + sendindex + "/" +protocNo.get(hkey));
-				return "success";
+				log.info("send index error save-shop-history " + sendindex + "/" +protocNo.get(hkey));
+				//return "success";
 			}
 			protocNo.put(hkey, sendindex);
 		}
@@ -420,10 +430,27 @@ public class SteamApplication {
 			ret.put("code","0");
 			ret.put("msg","使用成功");
 			ret.put("productid",cdKey.getProductId().toString());
+
+			UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+			UserWithBLOBs saveUser = new UserWithBLOBs();
+			saveUser.setUid(steamid);
+			saveUser.setMoney(user.getMoney()!=null?user.getMoney().intValue():0 + getCDkeyMoney(cdKey.getProductId()));
+			userMapper.updateByPrimaryKeySelective(saveUser);
 		}
 
 		Object obj = JSONArray.toJSON(ret);
 		String json = obj.toString();
 		return json;
+	}
+
+	private int getCDkeyMoney(Integer productid)
+	{
+		switch (productid){
+			case 2:return 10;
+			case 3:return 20;
+			case 4:return 50;
+			case 5:return 200;
+			default:return 0;
+		}
 	}
 }
