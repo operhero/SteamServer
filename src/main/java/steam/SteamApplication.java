@@ -431,10 +431,14 @@ public class SteamApplication {
 			ret.put("msg","使用成功");
 			ret.put("productid",cdKey.getProductId().toString());
 
+
 			UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
 			UserWithBLOBs saveUser = new UserWithBLOBs();
 			saveUser.setUid(steamid);
-			saveUser.setMoney(user.getMoney()!=null?user.getMoney().intValue():0 + getCDkeyMoney(cdKey.getProductId()));
+			int origin = user.getMoney()!=null?user.getMoney().intValue():0;
+			int add = getCDkeyMoney(cdKey.getProductId());
+			log.info("money change " + steamid + " " + origin + " " + add);
+			saveUser.setMoney(origin + add);
 			userMapper.updateByPrimaryKeySelective(saveUser);
 		}
 
