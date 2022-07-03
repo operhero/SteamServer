@@ -137,4 +137,13 @@ public class RedisTempleService {
         return redisTemplate.opsForZSet().rangeByScore(key, min, max);
     }
 
+    public String stringGet(String key){
+        String v =  (String)redisTemplate.opsForValue().get(key);
+        return v;
+    }
+
+    public void stringSet(String key, String val){
+        redisTemplate.opsForValue().set(key, val);
+    }
+
 }

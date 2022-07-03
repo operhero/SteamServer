@@ -3,7 +3,7 @@
         PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
         "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
 <generatorConfiguration>
-    <classPathEntry location="C:/mysql-connector-java-5.1.43.jar" />
+    <classPathEntry location="C:\Users\64879\.m2\repository\mysql\mysql-connector-java\8.0.22\mysql-connector-java-8.0.22.jar" />
     <context id="test" targetRuntime="MyBatis3">
 
         <plugin type="org.mybatis.generator.plugins.EqualsHashCodePlugin"></plugin>
@@ -18,9 +18,10 @@
         </commentGenerator>
         <!--数据库链接URL，用户名、密码 -->
         <jdbcConnection driverClass="com.mysql.jdbc.Driver"
-                        connectionURL="jdbc:mysql://localhost:3306/steam"
+                        connectionURL="jdbc:mysql://localhost:3306/steam?serverTimezone=UTC"
                         userId="root"
                         password="root">
+            <property name="nullCatalogMeansCurrent" value="true"/>
         </jdbcConnection>
         <javaTypeResolver>
             <!-- This property is used to specify whether MyBatis Generator should

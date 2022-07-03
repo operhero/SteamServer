@@ -256,6 +256,57 @@ public class SteamApplication {
 		return "success";
 	}
 
+	@RequestMapping(value = "/record-profile", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String recordProfile(@RequestParam(value = "steamid") String steamid,
+						@RequestParam(value = "sign") String sign,
+						HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
+		JSONObject object = new JSONObject();
+		object.put("uid",user.getUid());
+		object.put("record",user.getRecord());
+		String json = object.toString();
+		return json;
+	}
+
+	@RequestMapping(value = "/record-update", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String recordUpdate(@RequestParam(value = "steamid") String steamid,
+					   @RequestParam(value = "record") String record,
+					   @RequestParam(value = "sign") String sign,
+					   @RequestParam(defaultValue = "0") Integer sendindex,
+					   HttpServletRequest request)  {
+		StringBuffer md5buf = new StringBuffer();
+		md5buf.append("steamid=").append(steamid).append("&record=").append(record).append("&serverKey=").append(serverKey);
+		String _sign = DigestUtils.md5Hex(md5buf.toString());
+		if (!sign.equalsIgnoreCase(_sign)){
+			return "sign error";
+		}
+
+		String hkey = "record-update" + steamid;
+		if(sendindex > 0){
+			if(protocNo.containsKey(hkey) && protocNo.get(hkey)>sendindex){
+				log.info("send index error record-update " + sendindex + "/" +protocNo.get(hkey));
+				//return "success";
+			}
+			protocNo.put(hkey, sendindex);
+		}
+
+		UserWithBLOBs user = new UserWithBLOBs();
+		user.setUid(steamid);
+		user.setRecord(record);
+		userMapper.updateByPrimaryKeySelective(user);
+
+		return "success";
+	}
+
 	@RequestMapping(value = "/load-shop-history", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
 	String loadShopHistory(@RequestParam(value = "steamid") String steamid,
@@ -367,6 +418,45 @@ public class SteamApplication {
 		}
 
 		return sb.toString();
+	}
+
+	@RequestMapping(value = "/sign-in", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String signIn(@RequestParam(value = "steamid") String steamid,@RequestParam(value = "day") Integer day,
+						  HttpServletRequest request)  {
+		if(day <1 || day > 31) return "0";
+		int sign = signQuery(steamid);
+		boolean canSign = (sign & 1<<day) == 0;
+		if(!canSign){
+			return "0";
+		}
+
+		sign |=1<<day;
+		redisTempleService.stringSet("sign."+steamid, sign+"");
+		return "1";
+	}
+
+	@RequestMapping(value = "/sign-query", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String signQuery(@RequestParam(value = "steamid") String steamid,
+				  HttpServletRequest request)  {
+		int sign = signQuery(steamid);
+		return sign + "";
+	}
+
+	private int signQuery(String steamid){
+		String s = redisTempleService.stringGet("sign."+steamid);
+		if(s == null){
+			return 0;
+		}
+		int i = Integer.parseInt(s);
+		Calendar aCalendar = Calendar.getInstance();
+		aCalendar.setTime(new Date());
+		int dayOfMonth=aCalendar.get(Calendar.DAY_OF_MONTH);
+		if(dayOfMonth == 1 && i != 2){
+			i = 0;
+		}
+		return i;
 	}
 
 	@RequestMapping(value = "/gen-cdkey", produces = "text/javascript;charset=UTF-8")
