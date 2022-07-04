@@ -256,9 +256,9 @@ public class SteamApplication {
 		return "success";
 	}
 
-	@RequestMapping(value = "/record-profile", produces = "text/javascript;charset=UTF-8")
+	@RequestMapping(value = "/archive-profile", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
-	String recordProfile(@RequestParam(value = "steamid") String steamid,
+	String archiveProfile(@RequestParam(value = "steamid") String steamid,
 						@RequestParam(value = "sign") String sign,
 						HttpServletRequest request)  {
 		StringBuffer md5buf = new StringBuffer();
@@ -271,29 +271,29 @@ public class SteamApplication {
 		UserWithBLOBs user = userMapper.selectByPrimaryKey(steamid);
 		JSONObject object = new JSONObject();
 		object.put("uid",user.getUid());
-		object.put("record",user.getRecord());
+		object.put("archive",user.getArchive());
 		String json = object.toString();
 		return json;
 	}
 
-	@RequestMapping(value = "/record-update", produces = "text/javascript;charset=UTF-8")
+	@RequestMapping(value = "/archive-update", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
-	String recordUpdate(@RequestParam(value = "steamid") String steamid,
-					   @RequestParam(value = "record") String record,
+	String archiveUpdate(@RequestParam(value = "steamid") String steamid,
+					   @RequestParam(value = "archive") String archive,
 					   @RequestParam(value = "sign") String sign,
 					   @RequestParam(defaultValue = "0") Integer sendindex,
 					   HttpServletRequest request)  {
 		StringBuffer md5buf = new StringBuffer();
-		md5buf.append("steamid=").append(steamid).append("&record=").append(record).append("&serverKey=").append(serverKey);
+		md5buf.append("steamid=").append(steamid).append("&archive=").append(archive).append("&serverKey=").append(serverKey);
 		String _sign = DigestUtils.md5Hex(md5buf.toString());
 		if (!sign.equalsIgnoreCase(_sign)){
 			return "sign error";
 		}
 
-		String hkey = "record-update" + steamid;
+		String hkey = "archive-update" + steamid;
 		if(sendindex > 0){
 			if(protocNo.containsKey(hkey) && protocNo.get(hkey)>sendindex){
-				log.info("send index error record-update " + sendindex + "/" +protocNo.get(hkey));
+				log.info("send index error archive-update " + sendindex + "/" +protocNo.get(hkey));
 				//return "success";
 			}
 			protocNo.put(hkey, sendindex);
@@ -301,7 +301,7 @@ public class SteamApplication {
 
 		UserWithBLOBs user = new UserWithBLOBs();
 		user.setUid(steamid);
-		user.setRecord(record);
+		user.setArchive(archive);
 		userMapper.updateByPrimaryKeySelective(user);
 
 		return "success";
