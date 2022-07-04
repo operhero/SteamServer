@@ -2,7 +2,9 @@ package steam;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import io.netty.util.internal.StringUtil;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.tomcat.util.buf.StringUtils;
 import org.mybatis.spring.annotation.MapperScan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -422,17 +424,27 @@ public class SteamApplication {
 
 	@RequestMapping(value = "/sign-in", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
-	String signIn(@RequestParam(value = "steamid") String steamid,@RequestParam(value = "day") Integer day,
+	String signIn(@RequestParam(value = "steamid") String steamid,
+				  @RequestParam(value = "day") Integer day,
 						  HttpServletRequest request)  {
-		if(day <1 || day > 31) return "0";
-		int sign = signQuery(steamid);
-		boolean canSign = (sign & 1<<day) == 0;
+		int dayOfMonth = dayOfMonth();
+		if(day == 0){
+			day = dayOfMonth;
+		}
+
+		if(day <0 || day > dayOfMonth) return "0";
+
+		String sign = signQuery(steamid);
+		ArrayList<String> list = new ArrayList<String>(Arrays.asList(sign.split(",")));
+		list.remove("");
+		boolean canSign = !list.contains(day + "");
 		if(!canSign){
 			return "0";
 		}
 
-		sign |=1<<day;
-		redisTempleService.stringSet("sign."+steamid, sign+"");
+		list.add(day+"");
+		sign = StringUtils.join(list,',');
+		redisTempleService.stringSet("sign."+steamid, sign);
 		return "1";
 	}
 
@@ -440,23 +452,32 @@ public class SteamApplication {
 	public @ResponseBody
 	String signQuery(@RequestParam(value = "steamid") String steamid,
 				  HttpServletRequest request)  {
-		int sign = signQuery(steamid);
-		return sign + "";
+		String sign = signQuery(steamid);
+		return sign;
 	}
 
-	private int signQuery(String steamid){
+	private String signQuery(String steamid){
 		String s = redisTempleService.stringGet("sign."+steamid);
 		if(s == null){
-			return 0;
+			return "";
 		}
-		int i = Integer.parseInt(s);
+
+		ArrayList<String> list = new ArrayList<String>(Arrays.asList(s.split(",")));
+		int dayOfMonth = dayOfMonth();
+		if(dayOfMonth == 1){
+			if(list.size()>1 || (list.size() == 1 && !list.get(0).equals("1"))){
+				redisTempleService.stringSet("sign."+steamid, "");
+				return "";
+			}
+		}
+		return s;
+	}
+
+	private int dayOfMonth() {
 		Calendar aCalendar = Calendar.getInstance();
 		aCalendar.setTime(new Date());
 		int dayOfMonth=aCalendar.get(Calendar.DAY_OF_MONTH);
-		if(dayOfMonth == 1 && i != 2){
-			i = 0;
-		}
-		return i;
+		return dayOfMonth;
 	}
 
 	@RequestMapping(value = "/gen-cdkey", produces = "text/javascript;charset=UTF-8")
