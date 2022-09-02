@@ -480,6 +480,14 @@ public class SteamApplication {
 		return dayOfMonth;
 	}
 
+	@RequestMapping(value = "/error_message", produces = "text/javascript;charset=UTF-8")
+	public @ResponseBody
+	String errorMessage(@RequestParam(value = "message") String message,
+					 HttpServletRequest request)  {
+		log.error(message);
+		return "get error";
+	}
+
 	@RequestMapping(value = "/gen-cdkey", produces = "text/javascript;charset=UTF-8")
 	public @ResponseBody
 	String genCDKey(@RequestParam(value = "productid") int productid,
